@@ -1,0 +1,188 @@
+---
+title: "Registered Pets"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    source_code: embed
+    theme: lumen
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, 
+  warning = FALSE, 
+  message = FALSE
+)
+```
+
+```{r input_demo, eval=FALSE}
+input <- list(
+  birth_year = 2015
+)
+```
+
+```{r workspace}
+library(tidyverse)
+library(DT)            # datatable
+library(flexdashboard) # valueBox
+library(scales)        # percent
+library(plotly)        # ggplotly
+
+animals <- read_rds("registered_animals.Rds")
+
+```
+
+Sidebar {.sidebar data-width=300}
+--------------------------
+
+```{r slider_dob}
+shiny::sliderInput(
+  inputId = "birth_year",
+  label = "Select year of birth:",
+  min = min(animals$born_year),
+  max = max(animals$born_year),
+  value = max(animals$born_year),
+  sep = "",
+  animate = TRUE
+)
+```
+
+This data comes from [The Sunshine Coast Council](https://data.sunshinecoast.qld.gov.au/Administration/Registered-Animals/7f87-i6kx/data # http://rstudio-pubs-static.s3.amazonaws.com/434674_24af082031324d9c8e8739d1ca7227f9.html) in Queensland, Australia (10/1/2020).
+
+A demo analysis can be found [here](http://rstudio-pubs-static.s3.amazonaws.com/434674_24af082031324d9c8e8739d1ca7227f9.html)
+
+Row {data-height=100}
+-------------------
+
+###
+
+```{r}
+flexdashboard::valueBox(
+  value = paste0(round(nrow(animals) / 1000), "K"),
+  caption = "registered pets"
+)
+```
+
+###
+```{r}
+valueBox(
+  value = scales::percent(mean(animals$gender == "Female")),
+  caption = "female"
+)
+```
+
+###
+
+```{r}
+valueBox(
+  value = percent(mean(animals$sterile)),
+  caption = "sterile"
+)
+```
+
+###
+```{r}
+# renderValueBox(
+  valueBox(
+    value = percent(mean(fct_lump_n(animals$breed, n = 30) == "Other")),
+    caption = "from less popular breeds"
+  )
+# )
+```
+
+
+Row
+--------------------
+
+### Top 5 Pet Names
+
+```{r datatable}
+DT::renderDataTable({
+  df <-
+    animals %>%
+    filter(born_year == input$birth_year) %>% 
+    count(gender, type, name, sort = TRUE) %>% 
+    group_by(gender, type) %>%
+    mutate(Rank = row_number()) %>% 
+    ungroup() %>% 
+    filter(Rank <= 5) %>% 
+    mutate(name = glue::glue("{name} ({n})")) %>% 
+    select(-n) %>% 
+    pivot_wider(
+      names_from = c(gender, type),
+      names_sep = "-", 
+      names_sort = TRUE,
+      values_from = name
+    )
+  
+  DT::datatable(
+    df,
+    filter = "top",
+    rownames = FALSE,
+    options = list(dom = "i")
+  )
+})
+
+
+```
+
+### Top Breeds
+
+```{r plot}
+# <h2 style="font-size:50px">&#128049&#128054;</h2>
+
+plotly::renderPlotly({
+  p <-
+    animals %>% 
+    filter(born_year == input$birth_year) %>%
+    group_by(type) %>% 
+    mutate(
+      breed = 
+        fct_lump_n(breed, 5) %>% 
+        fct_infreq() %>% 
+        fct_rev(),
+      breed_int = as.integer(breed),
+      fill = breed_int == max(breed_int)
+    ) %>% 
+    ungroup() %>% 
+    ggplot(aes(y = breed, fill = fill)) +
+    geom_bar() +
+    scale_fill_manual(values = c("grey80", "dodgerblue")) +
+    facet_wrap(~ type, scales = "free") +
+    theme_minimal() +
+    theme(
+      panel.grid = element_blank(),
+      legend.position = "none"
+    ) +
+    labs(
+      x = "# of Pets",
+      y = NULL,
+      fill = NULL
+    )
+  
+  plotly::ggplotly(p)
+})
+
+knitr::knit_exit() # stops knitting at this point
+```
+
+# more ideas
+* gender neutral names
+* what names are most popular for unpopular breeds/colors "(other)"
+* most popular name by year of birth
+* is there a difference in top names for pets that have been spayed/neutered
+
+
+
+# don't work :(
+Emoji options:
+🐕 vs 🐈 
+🐱 vs 🐶
+`r shiny::h3("Top Breeds 🐱 vs 🐶")`
+<h3 style="font-size:50px"> Top Breeds &#128049 vs. &#128054; </h2>
+
+
+You can view shinyWidgets here
+https://github.com/dreamRs/shinyWidgets
