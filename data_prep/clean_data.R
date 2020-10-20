@@ -13,12 +13,12 @@ raw_data <-
 
 clean_data <-
   raw_data %>%
-  select(-c(locality, specific_breed)) %>%
   rename(
     type = animal_type,
     color = primary_colour,
     sterile = de.sexed,
-    breed = primary_breed
+    breed = primary_breed,
+    breed_specific = specific_breed
   ) %>%
   mutate_all(trimws) %>%
   mutate(
@@ -53,7 +53,8 @@ final_data <-
   group_by(type) %>%
   mutate(
     #breed = fct_lump_n(breed, n = 30, other_level = "(other)"),
-    color = fct_lump_n(color, n = 15, other_level = "(other)")
+    color = fct_lump_n(color, n = 15, other_level = "(other)"),
+    locality = fct_lump_min(locality, min = 500, other_level = "(other)")
   ) %>%
   ungroup() %>%
   mutate(
