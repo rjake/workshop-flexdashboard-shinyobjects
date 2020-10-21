@@ -252,6 +252,7 @@ Column
 
 ### more ideas
 * turn the table + plot into a [tabset](https://rmarkdown.rstudio.com/flexdashboard/using.html#tabsets)
+* change the [theme](https://rmarkdown.rstudio.com/flexdashboard/using.html#appearance)
 * most popular gender neutral names
 * what names are most popular for unpopular breeds
 * can you make the Bella's table reactive
@@ -262,25 +263,10 @@ Column
 Column
 --------------------------
 ### Tutorials
-* flexdashboard - [tutorial](https://rmarkdown.rstudio.com/flexdashboard/using.html#layout)
-* shinyobjects - [tutorial](https://rjake.github.io/shinyobjects/)
+* `flexdashboard` - [tutorial](https://rmarkdown.rstudio.com/flexdashboard/using.html#layout)
+* `shinyobjects` - [tutorial](https://rjake.github.io/shinyobjects/)
+* `shinyWidgets` - demo [here](https://dreamrs-vic.shinyapps.io/shinyWidgets/) and docs  [here](https://dreamrs.github.io/shinyWidgets/index.html)
 
-### Widgets to try
-You can view shinyWidgets [here](https://dreamrs-vic.shinyapps.io/shinyWidgets/) [docs](https://dreamrs.github.io/shinyWidgets/index.html)
-
-
-```{r}
-shiny::sliderInput(
-  inputId = "age_group",
-  label = "Select year of birth:",
-  min = min(animals$year_born),
-  max = max(animals$year_born),
-  value = max(animals$year_born),
-  sep = "",
-  animate = TRUE
-)
-
-```
 
 
 ```{r end}
