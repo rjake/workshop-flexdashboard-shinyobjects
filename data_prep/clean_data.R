@@ -14,7 +14,7 @@ raw_data <-
 clean_data <-
   raw_data %>%
   rename(
-    type = animal_type,
+    species = animal_type,
     color = primary_colour,
     sterile = de.sexed,
     breed = primary_breed,
@@ -23,6 +23,15 @@ clean_data <-
   mutate_all(trimws) %>%
   mutate(
     gender = recode(gender, F = "Female", M = "Male"),
+    age = as.integer(age),
+    age_group =
+      case_when(
+        age <= 5 ~ "0 - 5",
+        age <= 10 ~ "6 - 11",
+        age <= 15 ~ "11 - 15",
+        TRUE ~ "15+"
+      ) %>%
+      fct_reorder(age),
     name =
       str_replace(tolower(name), "rocky.*", "rocky") %>%
       str_remove_all("\\(formerly.*") %>%
@@ -35,8 +44,8 @@ clean_data <-
       ) %>%
       trimws() %>%
       str_to_title(),
-    type = recode(type, D = "Dog"),
-    age = as.integer(age),
+    species = recode(species, D = "Dog"),
+
     sterile = (sterile == "Y")
   ) %>%
   mutate_if(is.character, as.factor)
@@ -50,7 +59,7 @@ final_data <-
     gender != "U"
   ) %>%
   drop_na() %>%
-  group_by(type) %>%
+  group_by(species) %>%
   mutate(
     #breed = fct_lump_n(breed, n = 30, other_level = "(other)"),
     color = fct_lump_n(color, n = 15, other_level = "(other)"),
@@ -60,7 +69,7 @@ final_data <-
   mutate(
     breed = fct_infreq(breed) %>% fct_rev(),
     color = fct_infreq(color) %>% fct_rev(),
-    born_year = 2020 - age
+    year_born = 2020 - age
   ) %>%
   ungroup()
 
