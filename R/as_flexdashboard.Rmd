@@ -19,35 +19,89 @@ knitr::opts_chunk$set(
 
 ```{r input_demo, eval=FALSE}
 input <- list(
-  birth_year = 2015
+  age_group = '0 - 5',
+  n = 10
 )
 ```
 
 ```{r workspace}
 library(tidyverse)
+library(glue)
 library(DT)            # datatable
 library(flexdashboard) # valueBox
 library(scales)        # percent
 library(plotly)        # ggplotly
+library(simplecolors)  # sc
 
 animals <- read_rds("registered_animals.Rds")
 
+color_dogs <- sc("blue3")
+color_cats <- sc("teal3")
 ```
+
+```{r functions}
+nice_datatable <- function(df, caption = NULL, ...) {
+  df %>%
+    datatable(
+      extensions = c("Buttons", "FixedHeader", "Scroller"),
+      filter = "top",
+      rownames = FALSE,
+      escape = FALSE,
+      caption = caption,
+      options =
+        list(
+          dom = "Brtip",
+          deferRender = FALSE,
+          scrollY = 300,
+          scroller = TRUE,
+          scrollX = TRUE,
+          fixedHeader = FALSE,
+          buttons = c("copy", "csv", "excel", "pdf", "print"),
+          pageLength = nrow(df),
+          lengthChange = FALSE,
+          ...
+        )
+    )
+}
+```
+
+STATS
+==========================
 
 Sidebar {.sidebar data-width=300}
 --------------------------
 
-```{r slider_dob}
-shiny::sliderInput(
-  inputId = "birth_year",
-  label = "Select year of birth:",
-  min = min(animals$born_year),
-  max = max(animals$born_year),
-  value = max(animals$born_year),
-  sep = "",
-  animate = TRUE
+```{r age_input}
+age_groups <- as.character(sort(unique(animals$age_group)))
+
+shinyWidgets::radioGroupButtons(
+  inputId = "age_group",        # < - input$age_group--------
+  label = "Select Age Group:",
+  choices = c("All", age_groups),
+  selected = "All",
+  direction = "vertical",
+  justified = TRUE,
+  width = "150px" 
 )
+
+shiny::sliderInput(
+  inputId = "n",                 # < - input$n --------------
+  label = "# of Results:",
+  min = 1,
+  max = 20,
+  value = 10
+)
+
+filtered_data <- reactive({      # <- filtered_data() -------
+  if (input$age_group != "All") {
+    filter(animals, age_group %in% input$age_group)
+  } else {
+    animals
+  }
+})
+
 ```
+
 
 This data comes from [The Sunshine Coast Council](https://data.sunshinecoast.qld.gov.au/Administration/Registered-Animals/7f87-i6kx/data # http://rstudio-pubs-static.s3.amazonaws.com/434674_24af082031324d9c8e8739d1ca7227f9.html) in Queensland, Australia (10/1/2020).
 
@@ -59,70 +113,71 @@ Row {data-height=100}
 ###
 
 ```{r}
-flexdashboard::valueBox(
-  value = paste0(round(nrow(animals) / 1000), "K"),
-  caption = "registered pets"
-)
-```
-
-###
-```{r}
-valueBox(
-  value = scales::percent(mean(animals$gender == "Female")),
-  caption = "female"
-)
-```
-
-###
-
-```{r}
-valueBox(
-  value = percent(mean(animals$sterile)),
-  caption = "sterile"
-)
-```
-
-###
-```{r}
-# renderValueBox(
-  valueBox(
-    value = percent(mean(fct_lump_n(animals$breed, n = 30) == "Other")),
-    caption = "from less popular breeds"
+renderValueBox({
+  df <- filtered_data()
+  
+  flexdashboard::valueBox(
+    value = comma(nrow(df)),
+    caption = "registered pets",
+    icon = "fas fa-paw",
+    color = "grey"
   )
-# )
+})
+```
+
+###
+```{r}
+valueBox(                                                # < --------
+  value = percent(mean(animals$sterile)), 
+  caption = "spayed/neutered",
+  icon = "fa-hand-scissors",
+  color = "grey"
+)
+```
+
+###
+```{r}
+valueBox(                                                # < --------
+  value = comma(sum(animals$species == "Cat")),
+  caption = "# Cats",
+  color = color_cats
+)
+```
+
+###
+```{r}
+valueBox(                                                # < --------
+  value = comma(sum(animals$species == "Dog")),
+  caption = "# Dogs",
+  color = color_dogs
+)
 ```
 
 
 Row
 --------------------
 
-### Top 5 Pet Names
+###
 
 ```{r datatable}
 DT::renderDataTable({
   df <-
-    animals %>%
-    filter(born_year == input$birth_year) %>% 
-    count(gender, type, name, sort = TRUE) %>% 
-    group_by(gender, type) %>%
+    filtered_data() %>% 
+    count(gender, species, name, sort = TRUE) %>% 
+    group_by(gender, species) %>%
     mutate(Rank = row_number()) %>% 
     ungroup() %>% 
-    filter(Rank <= 5) %>% 
+    filter(Rank <= 10) %>%                               # < --------
     mutate(name = glue::glue("{name} ({n})")) %>% 
     select(-n) %>% 
     pivot_wider(
-      names_from = c(gender, type),
+      names_from = c(gender, species),
       names_sep = "-", 
       names_sort = TRUE,
       values_from = name
     )
   
-  DT::datatable(
-    df,
-    filter = "top",
-    rownames = FALSE,
-    options = list(dom = "i")
-  )
+  nice_datatable(df, caption = glue("Top {10} Pet Names"))
 })
 
 
@@ -135,22 +190,20 @@ DT::renderDataTable({
 
 plotly::renderPlotly({
   p <-
-    animals %>% 
-    filter(born_year == input$birth_year) %>%
-    group_by(type) %>% 
+    filtered_data() %>%
+    group_by(species) %>% 
     mutate(
       breed = 
-        fct_lump_n(breed, 5) %>% 
+        fct_lump_n(breed, 10) %>%                        # < --------
         fct_infreq() %>% 
-        fct_rev(),
-      breed_int = as.integer(breed),
-      fill = breed_int == max(breed_int)
+        fct_rev()
     ) %>% 
     ungroup() %>% 
-    ggplot(aes(y = breed, fill = fill)) +
+    filter(breed != "Other") %>% 
+    ggplot(aes(y = breed, fill = species)) +
     geom_bar() +
-    scale_fill_manual(values = c("grey80", "dodgerblue")) +
-    facet_wrap(~ type, scales = "free") +
+    facet_wrap(~ species, scales = "free") +
+    scale_fill_manual(values = c(color_cats, color_dogs)) +
     theme_minimal() +
     theme(
       panel.grid = element_blank(),
@@ -164,25 +217,113 @@ plotly::renderPlotly({
   
   plotly::ggplotly(p)
 })
+```
 
+
+BELLAS
+==========================
+
+```{r bella_table}
+animals %>%
+  filter(str_detect(name, "Bella")) %>%
+  select(species, age_group, age, breed, breed_specific, locality, sterile) %>%
+  mutate_if(is.factor, fct_drop) %>%
+  rename_all(~str_replace_all(toupper(.x), "_", " ")) %>% 
+  nice_datatable(caption = "All the Bellas")
+```
+
+YOUR TURN
+==========================
+
+Column
+--------------------------
+### Needs Fixing
+* valueboxes for cat & dog totals should be reactive
+* plot of breeds should be reactive to `input$n`
+* can you add a toggle for cats vs dogs `shinyWidgets::radioGroupButtons()`
+* Questions
+  * What breed is the oldest Bella?
+  * What is the most common suffix in the top 13 spot?
+  * How many cats are 15+?
+
+### more ideas
+* most poular gender neutral names
+* what names are most popular for unpopular breeds
+* is there a difference in top names for pets that have been spayed/neutered
+* can you make the Bella's table reactive
+* turn the table + plot into a [tabset](https://rmarkdown.rstudio.com/flexdashboard/using.html#tabsets)
+* Upload pictures: https://drive.google.com/drive/folders/1NqUKWiYBsroxDYlUliB6_bdh4YKE94jO?usp=sharing
+
+Column
+--------------------------
+### Tutorials
+* flexdashboard - [tutorial](https://rmarkdown.rstudio.com/flexdashboard/using.html#layout)
+* shinyobjects - [tutorial](https://rjake.github.io/shinyobjects/)
+
+### Widgets to try
+You can view shinyWidgets [here](https://dreamrs-vic.shinyapps.io/shinyWidgets/) [docs](https://dreamrs.github.io/shinyWidgets/index.html)
+
+
+```{r}
+shiny::sliderInput(
+  inputId = "age_group",
+  label = "Select year of birth:",
+  min = min(animals$year_born),
+  max = max(animals$year_born),
+  value = max(animals$year_born),
+  sep = "",
+  animate = TRUE
+)
+
+```
+
+
+```{r end}
 knitr::knit_exit() # stops knitting at this point
 ```
 
-# more ideas
-* gender neutral names
-* what names are most popular for unpopular breeds/colors "(other)"
-* most popular name by year of birth
-* is there a difference in top names for pets that have been spayed/neutered
+# fontawesome
+```{r}
+search_fonts <- function(pattern) {
+  fontawesome:::fa_tbl %>% 
+    select(-svg) %>%
+    filter(str_detect(name, pattern))
+}
+
+search_fonts("paw")
+# search_fonts("cat")
+# search_fonts("dog")
+search_fonts("scissor")
+```
 
 
 
-# don't work :(
-Emoji options:
-🐕 vs 🐈 
-🐱 vs 🐶
-`r shiny::h3("Top Breeds 🐱 vs 🐶")`
-<h3 style="font-size:50px"> Top Breeds &#128049 vs. &#128054; </h2>
 
 
-You can view shinyWidgets here
-https://github.com/dreamRs/shinyWidgets
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*ANSWERS* *****************************
+- What Breed is the oldest Bella? *labrador*
+- Wha is the most common suffix in the top 13 spot? *-ly*
+- How many cats are 15+? *385*
