@@ -171,7 +171,7 @@ DT::renderDataTable({
     group_by(gender, species) %>%
     mutate(Rank = row_number()) %>% 
     ungroup() %>% 
-    filter(Rank <= 10) %>%                               # < --------
+    filter(Rank <= 10) %>%                              # < --------
     mutate(name = glue::glue("{name} ({n})")) %>% 
     select(-n) %>% 
     pivot_wider(
@@ -181,7 +181,7 @@ DT::renderDataTable({
       values_from = name
     )
   
-  nice_datatable(df, caption = glue("Top {10} Pet Names"))
+  nice_datatable(df, caption = glue("Top {10} Pet Names")) # < --------
 })
 
 
@@ -190,8 +190,6 @@ DT::renderDataTable({
 ### Top Breeds
 
 ```{r plot}
-# <h2 style="font-size:50px">&#128049&#128054;</h2>
-
 plotly::renderPlotly({
   p <-
     filtered_data() %>%
@@ -230,7 +228,9 @@ BELLAS
 ```{r bella_table}
 animals %>%
   filter(str_detect(name, "Bella")) %>%
-  select(species, age_group, age, breed, breed_specific, locality, sterile) %>%
+  select(
+    species, age_group, age, breed, breed_specific, locality, sterile
+  ) %>%
   mutate_if(is.factor, fct_drop) %>%
   rename_all(~str_replace_all(toupper(.x), "_", " ")) %>% 
   nice_datatable(caption = "All the Bellas")
@@ -253,10 +253,12 @@ Column
 
 ### more ideas
 * turn the table + plot into a [tabset](https://rmarkdown.rstudio.com/flexdashboard/using.html#tabsets)
-* most poular gender neutral names
+* most popular gender neutral names
 * what names are most popular for unpopular breeds
 * can you make the Bella's table reactive
-* Upload pictures: https://drive.google.com/drive/folders/1NqUKWiYBsroxDYlUliB6_bdh4YKE94jO?usp=sharing
+* can you replace the 2nd valuebox with a new plot?
+* play around :)
+* Upload pictures [here](https://drive.google.com/drive/folders/1NqUKWiYBsroxDYlUliB6_bdh4YKE94jO?usp=sharing)
 
 Column
 --------------------------
