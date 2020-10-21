@@ -13,8 +13,7 @@ knitr::opts_chunk$set(
 
 ```{r workspace}
 library(tidyverse)
-library(DT)           # datatable
-library(simplecolors) # sc
+library(DT) # datatable
 
 animals <- read_rds("registered_animals.Rds")
 
@@ -24,19 +23,19 @@ This data comes from [The Sunshine Coast Council](https://data.sunshinecoast.qld
 
 A demo analysis can be found [here](http://rstudio-pubs-static.s3.amazonaws.com/434674_24af082031324d9c8e8739d1ca7227f9.html)
 
-### Top 5 Pet Names
+### Top 10 Pet Names
 
 ```{r datatable}
 animals %>% 
-  count(gender, type, name, sort = TRUE) %>% 
-  group_by(gender, type) %>%
+  count(gender, species, name, sort = TRUE) %>% 
+  group_by(gender, species) %>%
   mutate(Rank = row_number()) %>% 
   ungroup() %>% 
-  filter(Rank <= 5) %>% 
+  filter(Rank <= 10) %>% 
   mutate(name = glue::glue("{name} ({n})")) %>% 
   select(-n) %>% 
   pivot_wider(
-    names_from = c(gender, type),
+    names_from = c(gender, species),
     names_sep = "-", 
     names_sort = TRUE,
     values_from = name
@@ -50,25 +49,23 @@ animals %>%
 ```
 
 
-### Top Breeds of 🐱 vs 🐶
+### Top Breeds of Cats vs Dogs
 
 ```{r plot}
 p <-
   animals %>% 
-  group_by(type) %>% 
+  group_by(species) %>% 
   mutate(
     breed = 
-      fct_lump_n(breed, 5) %>% 
+      fct_lump_n(breed, 10) %>% 
       fct_infreq() %>% 
-      fct_rev(),
-    breed_int = as.integer(breed),
-    fill = breed_int == max(breed_int)
+      fct_rev()
   ) %>% 
   ungroup() %>% 
-  ggplot(aes(y = breed, fill = fill)) +
-  geom_bar() +
-  scale_fill_manual(values = c("grey80", "dodgerblue")) +
-  facet_wrap(~ type, scales = "free") +
+  filter(breed != "Other") %>% 
+  ggplot(aes(y = breed)) +
+  geom_bar(fill = "dodgerblue") +
+  facet_wrap(~ species, scales = "free") +
   theme_minimal() +
   theme(
     panel.grid = element_blank(),
@@ -94,6 +91,3 @@ knitr::knit_exit() # stops knitting at this point
 * most popular name by year of birth
 * is there a difference in top names for pets that have been spayed/neutered
 
-Emoji options:
-🐕 vs 🐈 
-🐱 vs 🐶
