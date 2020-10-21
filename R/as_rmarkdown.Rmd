@@ -79,15 +79,4 @@ p <-
 
 
 plotly::ggplotly(p)
-
-
-
-knitr::knit_exit() # stops knitting at this point
 ```
-
-# more ideas
-* gender neutral names
-* what names are most popular for unpopular breeds/colors "(other)"
-* most popular name by year of birth
-* is there a difference in top names for pets that have been spayed/neutered
-

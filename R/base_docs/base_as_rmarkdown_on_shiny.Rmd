@@ -1,7 +1,7 @@
 ---
 title: "Registered Pets"
 output: html_document
-runtime: shiny
+# runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
