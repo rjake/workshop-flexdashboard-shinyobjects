@@ -14,9 +14,9 @@ knitr::opts_chunk$set(
 
 <!-- 
 ```{r input_demo, eval=FALSE}
-input <- list(
-  age_group = "0 - 5"
-)
+# input <- list(
+#   age_group = "0 - 5"
+# )
 ```
  -->
  
